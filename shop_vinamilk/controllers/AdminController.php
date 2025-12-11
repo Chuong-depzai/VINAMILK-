@@ -55,6 +55,7 @@ class AdminController
         $status = isset($_GET['status']) ? $_GET['status'] : null;
 
         if ($status) {
+            // ✅ FIX: countByStatus() chỉ nhận 1 tham số
             $orders = $this->orderModel->getByStatus($status, $page, $perPage);
             $totalOrders = $this->orderModel->countByStatus($status);
         } else {

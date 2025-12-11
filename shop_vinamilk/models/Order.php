@@ -256,4 +256,73 @@ class Order
         $stmt->execute([$months]);
         return $stmt->fetchAll();
     }
+    public function createWithPayment($userId, $cartItems, $shippingInfo, $paymentMethod = 'cod', $status = 'pending')
+    {
+        try {
+            $this->db->beginTransaction();
+            $totalAmount = 0;
+            foreach ($cartItems as $item) {
+                $totalAmount += $item['subtotal'];
+            }
+            $sql = "INSERT INTO orders (
+                        user_id, total_amount, 
+                        shipping_name, shipping_phone, shipping_address, notes,
+                        payment_method, payment_status, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                $userId,
+                $totalAmount,
+                $shippingInfo['name'] ?? '',
+                $shippingInfo['phone'] ?? '',
+                $shippingInfo['address'] ?? '',
+                $shippingInfo['notes'] ?? '',
+                $paymentMethod,
+                $paymentMethod === 'cod' ? 'pending' : 'pending_payment',
+                $status
+            ]);
+            $orderId = $this->db->lastInsertId();
+            $sql = "INSERT INTO order_items (order_id, product_id, product_name, product_price, quantity, subtotal) 
+                    VALUES (?, ?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
+            foreach ($cartItems as $item) {
+                $stmt->execute([
+                    $orderId,
+                    $item['id'],
+                    $item['name'],
+                    $item['price'],
+                    $item['quantity'],
+                    $item['subtotal']
+                ]);
+            }
+            $this->db->commit();
+            return $orderId;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
+
+    public function updatePaymentStatus($orderId, $paymentStatus, $orderStatus, $transactionNo = '', $bankCode = '', $note = '')
+    {
+        try {
+            $this->db->beginTransaction();
+            $sql = "UPDATE orders SET 
+                    payment_status = ?, status = ?,
+                    transaction_no = ?, bank_code = ?,
+                    paid_at = CURRENT_TIMESTAMP
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$paymentStatus, $orderStatus, $transactionNo, $bankCode, $orderId]);
+            $logSql = "INSERT INTO order_payment_logs (order_id, payment_status, transaction_no, bank_code, note) 
+                       VALUES (?, ?, ?, ?, ?)";
+            $logStmt = $this->db->prepare($logSql);
+            $logStmt->execute([$orderId, $paymentStatus, $transactionNo, $bankCode, $note]);
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
 }

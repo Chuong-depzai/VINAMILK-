@@ -281,6 +281,39 @@ switch ($controller) {
                 break;
         }
         break;
+    case 'payment':
+        require_once __DIR__ . '/controllers/PaymentController.php';
+        $paymentController = new PaymentController();
+
+        switch ($action) {
+            case 'checkout':
+                $paymentController->checkout();
+                break;
+            case 'processVNPay':
+                $paymentController->processVNPay();
+                break;
+            case 'processCOD':
+                $paymentController->processCOD();
+                break;
+            case 'vnpayReturn':
+                $paymentController->vnpayReturn();
+                break;
+            case 'success':
+                $paymentController->success();
+                break;
+            case 'failure':
+                $paymentController->failure();
+                break;
+            case 'codSuccess':
+                $paymentController->codSuccess();
+                break;
+            default:
+                $paymentController->checkout();
+                break;
+        }
+        break;
+
+
 
     // ========================================
     // DEFAULT – TRANG CHỦ
