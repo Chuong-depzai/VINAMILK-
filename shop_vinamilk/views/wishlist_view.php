@@ -96,7 +96,7 @@
     }
 </style>
 
-<div class="page-container">
+<div class="page-container" style="margin-top: 150px;">
     <link rel="stylesheet" href="style.css">
     <div class="wishlist-header">
         <h1 class="page-title">❤️ Danh sách yêu thích</h1>

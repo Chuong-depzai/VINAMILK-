@@ -1,4 +1,4 @@
-<div class="page-container">
+<div class="page-container" style="margin-top: 150px;">
     <h1 class="page-title">Giỏ hàng của bạn</h1>
 
     <?php if (empty($cartItems)): ?>

@@ -269,7 +269,7 @@
 
         /* ===== AWARDS SECTION ===== */
         .awards {
-            background: #f8f9fa;
+            background: #0213B0;
             padding: 35px 20px;
         }
 
@@ -820,20 +820,19 @@
     <section class="awards">
         <div class="awards-grid">
             <div class="award-item">
-                <div class="award-icon">🏆</div>
-                <div class="award-text">Thương hiệu Quốc gia</div>
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/award_1_fe08b5b4cd_b6bdc960a0.svg" alt="Award 1" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
             </div>
             <div class="award-item">
-                <div class="award-icon">⭐</div>
-                <div class="award-text">Top 100 Nơi làm việc tốt nhất</div>
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/award_2_959a72e121_bf8c4d70e7.svg" alt="Award 2" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
             </div>
             <div class="award-item">
-                <div class="award-icon">🌱</div>
-                <div class="award-text">Net Zero 2050</div>
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/home_award_cream_03_bda8905d48.svg" alt="Award 3" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
             </div>
             <div class="award-item">
-                <div class="award-icon">💚</div>
-                <div class="award-text">Sản phẩm Xanh</div>
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/award_4_271868f252_bbc2af5ba4.svg" alt="Award 4" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
+            </div>
+            <div class="award-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/award_5_83186cbade_1b1f7d78b3.svg" alt="Award 5" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
             </div>
         </div>
     </section>
@@ -850,32 +849,75 @@
         <h2 class="section-title">Mời Bạn Sắm Sữa</h2>
         <div class="products-grid">
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-21-side-9a37f0593e-9423a3cdfe-1@2x.png" alt="Product" style="height:260px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_21_Side_9a37f0593e_9423a3cdfe.png" alt="Product" style="height:260px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-19-side-665c54b37b-ff6e9dfb31-1@2x.png" alt="Product" style="height:220px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_19_Side_665c54b37b_ff6e9dfb31.png" alt="Product" style="height:220px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-1-side-4846bd0415-65223fdbc1-1@2x.png" alt="Product" style="height:280px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_23_Side_982d2c1cb5_361f5e8948.png" alt="Product" style="height:280px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-2-side-fd31695433-acdfead97a-1@2x.png" alt="Product" style="height:220px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_1_Side_4846bd0415_65223fdbc1.png" alt="Product" style="height:220px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-13-side-35aab76c3e-4a3e6ea55a-1@2x.png" alt="Product" style="height:280px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_2_Side_fd31695433_acdfead97a.png" alt="Product" style="height:280px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-26-side-8a9509923e-85df7697ec-1@2x.png" alt="Product" style="height:240px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_18_Stack_4c734e135c_0f8cf81528.png" alt="Product" style="height:240px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-24-front-104a1821ac-cf82b2a1eb-1@2x.png" alt="Product" style="height:290px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_13_Side_35aab76c3e_4a3e6ea55a.png" alt="Product" style="height:290px">
             </div>
             <div class="product-item">
-                <img src="https://c.animaapp.com/y3F5MTRV/img/sp-22-side-6c958a5103-aafbafc314-1@2x.png" alt="Product" style="height:290px">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_14_Expand_ce9d9cb4a8_a93e21358c.png" alt="Product" style="height:290px">
             </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_26_Side_8a9509923e_85df7697ec.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_24_Side_030f26bbac_2b08d74875.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_4_Side_631675be8d_121f68619e.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_22_Side_6c958a5103_aafbafc314.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_11_H_c1ea45b852_1d3d6cee3b.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_20_Side_390dbf1ccd_b0db9ae5b5.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_3_H_ca4b1c4dc8_00bf6f9cc7.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_6_D_3afb3ce4ac_c858e89bfe.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_16_H_782b9c0428_f774d9108e.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_17_Back_e4c8dbd8a0_1f654ada5f.png" alt="Product" style="height:290px">
+            </div>
+
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_10_D_0cefefa750_704bb4d31f.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_5_D_cde19e5bbd_8fcc15bae9.png" alt="Product" style="height:290px">
+            </div>
+            <div class="product-item">
+                <img src="https://d8um25gjecm9v.cloudfront.net/cms/SP_28_Side_14d5dab07a_ce101f2ac2.png" alt="Product" style="height:290px">
+            </div>
+
+            <div class="products-gradient"></div>
         </div>
         <div class="color-bar"></div>
     </section>
+
 
     <!-- TECHNOLOGY SECTION -->
     <section class="technology">

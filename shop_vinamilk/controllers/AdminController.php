@@ -49,17 +49,17 @@ class AdminController
     // ========================================
     public function orders()
     {
-        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
         $perPage = 20;
 
         $status = isset($_GET['status']) ? $_GET['status'] : null;
 
         if ($status) {
             // ✅ FIX: countByStatus() chỉ nhận 1 tham số
-            $orders = $this->orderModel->getByStatus($status, $page, $perPage);
+            $orders = $this->orderModel->getByStatus($status, $currentPage, $perPage);
             $totalOrders = $this->orderModel->countByStatus($status);
         } else {
-            $orders = $this->orderModel->getAllOrders($page, $perPage);
+            $orders = $this->orderModel->getAllOrders($currentPage, $perPage);
             $totalOrders = $this->orderModel->countAllOrders();
         }
 
@@ -148,7 +148,7 @@ class AdminController
     // ========================================
     public function users()
     {
-        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
         $perPage = 20;
 
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -156,12 +156,12 @@ class AdminController
         if ($search) {
             $users = $this->userModel->searchUsers($search);
             $totalUsers = count($users);
+            $totalPages = ceil($totalUsers / $perPage);
         } else {
-            $users = $this->userModel->getAllUsers($page, $perPage);
+            $users = $this->userModel->getAllUsers($currentPage, $perPage);
             $totalUsers = $this->userModel->countUsers();
+            $totalPages = ceil($totalUsers / $perPage);
         }
-
-        $totalPages = ceil($totalUsers / $perPage);
 
         require_once __DIR__ . '/../views/header.php';
         require_once __DIR__ . '/../views/admin_users.php';
@@ -235,7 +235,7 @@ class AdminController
     }
 
     // ========================================
-    // THỐNG KÊ
+    // THỐNG KÊ & BÁO CÁO
     // ========================================
     private function getDashboardStats()
     {
@@ -254,6 +254,7 @@ class AdminController
     public function reports()
     {
         $type = isset($_GET['type']) ? $_GET['type'] : 'daily';
+        $stats = $this->getDashboardStats();
 
         switch ($type) {
             case 'daily':
@@ -272,5 +273,100 @@ class AdminController
         require_once __DIR__ . '/../views/header.php';
         require_once __DIR__ . '/../views/admin_reports.php';
         require_once __DIR__ . '/../views/footer.php';
+    }
+
+    // Export Excel
+    public function exportExcel()
+    {
+        $type = isset($_GET['type']) ? $_GET['type'] : 'daily';
+        $filename = 'bao-cao-';
+
+        header('Content-Type: application/vnd.ms-excel');
+        header('Content-Disposition: attachment; filename="' . $filename . $type . '.xls"');
+
+        switch ($type) {
+            case 'daily':
+                $data = $this->orderModel->getDailyRevenue(30);
+                $this->exportDailyRevenueExcel($data);
+                break;
+            case 'monthly':
+                $data = $this->orderModel->getMonthlyRevenue(12);
+                $this->exportMonthlyRevenueExcel($data);
+                break;
+            case 'products':
+                $data = $this->productModel->getProductStats();
+                $this->exportProductsExcel($data);
+                break;
+        }
+
+        exit;
+    }
+
+    private function exportDailyRevenueExcel($data)
+    {
+        echo "Doanh thu hàng ngày (30 ngày)\n\n";
+        echo "Ngày\tSố đơn hàng\tDoanh thu\tTrung bình/đơn\n";
+
+        $totalRevenue = 0;
+        $totalOrders = 0;
+
+        foreach ($data as $row) {
+            $avgPerOrder = $row['order_count'] > 0 ? $row['revenue'] / $row['order_count'] : 0;
+            $totalRevenue += $row['revenue'];
+            $totalOrders += $row['order_count'];
+
+            echo date('d/m/Y', strtotime($row['date'])) . "\t" .
+                $row['order_count'] . "\t" .
+                number_format($row['revenue'], 0, ',', '.') . "\t" .
+                number_format($avgPerOrder, 0, ',', '.') . "\n";
+        }
+
+        echo "\nTổng\t" . $totalOrders . "\t" . number_format($totalRevenue, 0, ',', '.') . "\t" .
+            number_format($totalOrders > 0 ? $totalRevenue / $totalOrders : 0, 0, ',', '.') . "\n";
+    }
+
+    private function exportMonthlyRevenueExcel($data)
+    {
+        echo "Doanh thu hàng tháng (12 tháng)\n\n";
+        echo "Tháng\tSố đơn hàng\tDoanh thu\tTrung bình/đơn\n";
+
+        $totalRevenue = 0;
+        $totalOrders = 0;
+
+        foreach ($data as $row) {
+            $avgPerOrder = $row['order_count'] > 0 ? $row['revenue'] / $row['order_count'] : 0;
+            $totalRevenue += $row['revenue'];
+            $totalOrders += $row['order_count'];
+
+            echo $row['month'] . "\t" .
+                $row['order_count'] . "\t" .
+                number_format($row['revenue'], 0, ',', '.') . "\t" .
+                number_format($avgPerOrder, 0, ',', '.') . "\n";
+        }
+
+        echo "\nTổng\t" . $totalOrders . "\t" . number_format($totalRevenue, 0, ',', '.') . "\t" .
+            number_format($totalOrders > 0 ? $totalRevenue / $totalOrders : 0, 0, ',', '.') . "\n";
+    }
+
+    private function exportProductsExcel($data)
+    {
+        echo "Thống kê sản phẩm\n\n";
+        echo "Tên sản phẩm\tLoại\tGiá\tĐã bán\tDoanh số\n";
+
+        $totalRevenue = 0;
+        $totalSold = 0;
+
+        foreach ($data as $row) {
+            $totalRevenue += $row['total_revenue'] ?? 0;
+            $totalSold += $row['total_sold'] ?? 0;
+
+            echo $row['name'] . "\t" .
+                $row['type'] . "\t" .
+                number_format($row['price'], 0, ',', '.') . "\t" .
+                ($row['total_sold'] ?? 0) . "\t" .
+                number_format($row['total_revenue'] ?? 0, 0, ',', '.') . "\n";
+        }
+
+        echo "\nTổng\t\t\t" . $totalSold . "\t" . number_format($totalRevenue, 0, ',', '.') . "\n";
     }
 }

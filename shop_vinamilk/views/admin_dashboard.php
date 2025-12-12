@@ -280,7 +280,7 @@
     }
 </style>
 
-<div class="admin-dashboard">
+<div class="admin-dashboard" style="margin-top: 150px;">
     <!-- Header -->
     <div class="admin-header">
         <h1 class="admin-title">Admin Dashboard</h1>

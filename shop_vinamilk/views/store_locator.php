@@ -232,8 +232,7 @@
         }
     }
 </style>
-
-<div class="store-locator-container">
+<div class="store-locator-container" style="margin-top: 150px;">
     <div class="store-locator-header">
         <h1 class="store-locator-title">Hệ Thống Cửa Hàng Vinamilk</h1>
         <p class="store-locator-subtitle">Tìm cửa hàng Vinamilk gần bạn nhất và nhận chỉ đường</p>
