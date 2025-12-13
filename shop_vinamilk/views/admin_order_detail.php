@@ -289,6 +289,7 @@
         }
     }
 </style>
+<br><br>
 
 <div class="order-detail-container">
     <!-- Header -->
