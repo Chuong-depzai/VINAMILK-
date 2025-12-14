@@ -248,6 +248,7 @@
         }
     }
 </style>
+<br> <br> <br> <br> <br>
 
 <div class="checkout-container">
     <h1 style="text-align: center; color: #0033a0; margin-bottom: 40px;">🛒 Thanh toán đơn hàng</h1>
