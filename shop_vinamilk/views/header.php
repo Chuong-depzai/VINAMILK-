@@ -7,9 +7,21 @@ require_once __DIR__ . '/../controllers/AuthController.php';
 
 $cartModel = new Cart();
 $cartCount = $cartModel->getCount();
+$cartItems = $cartModel->getItems();
+$cartTotal = $cartModel->getTotal();
 
 $isLoggedIn = AuthController::isLoggedIn();
 $currentUser = AuthController::getCurrentUser();
+
+// Load wishlist
+$wishlistCount = 0;
+$wishlistItems = [];
+if ($isLoggedIn) {
+    require_once __DIR__ . '/../models/Wishlist.php';
+    $wishlistModel = new Wishlist();
+    $wishlistCount = $wishlistModel->getCount($_SESSION['user_id']);
+    $wishlistItems = $wishlistModel->getByUserId($_SESSION['user_id']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -19,32 +31,381 @@ $currentUser = AuthController::getCurrentUser();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sữa Tươi | Vinamilk</title>
     <link rel="icon" type="image/png" href="uploads/logo.png">
-    <link rel="shortcut icon" href="uploads/logo.png" type="image/png">
-    <link rel="apple-touch-icon" href="uploads/logo.png">
-
     <link rel="stylesheet" href="css/new-style.css">
     <link rel="stylesheet" href="css/style.css">
 
     <style>
-        /* ===== HEADER - TRONG SUỐT BAN ĐẦU ===== */
+        /* ===== HEADER - Z-INDEX FIX ===== */
         .site-header {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            z-index: 1000;
+            z-index: 999999 !important;
+            /* CRITICAL: !important để override mọi z-index khác */
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             background: transparent;
         }
 
-        /* Khi scroll: White background */
+        /* Force tất cả children của header có z-index cao */
+        .site-header * {
+            position: relative;
+            z-index: inherit;
+        }
+
         .site-header.scrolled {
             background: rgba(255, 255, 255, 0.98) !important;
             box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(20px);
         }
 
-        /* ===== TOP BAR (Thanh xanh) ===== */
+        /* ===== USER DROPDOWN FIX - CLICK VERSION ===== */
+        .header-top {
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        .header-top-right {
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        .user-dropdown-wrapper {
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        .user-greeting {
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            padding: 10px 16px;
+            display: block;
+            position: relative;
+            z-index: 999999 !important;
+            background: transparent;
+            border-radius: 6px;
+            user-select: none;
+        }
+
+        .user-greeting:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .user-greeting:active {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(0.98);
+        }
+
+        .site-header.scrolled .user-greeting {
+            color: #0033a0 !important;
+        }
+
+        .site-header.scrolled .user-greeting:hover {
+            background: rgba(0, 51, 160, 0.1);
+        }
+
+        .user-dropdown-menu {
+            position: absolute !important;
+            top: calc(100% + 12px);
+            right: 0;
+            background: white;
+            min-width: 240px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+            border-radius: 12px;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px) scale(0.95);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999999 !important;
+            border: 2px solid rgba(0, 51, 160, 0.15);
+            pointer-events: none;
+        }
+
+        .user-dropdown-menu.show {
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0) scale(1) !important;
+            pointer-events: auto !important;
+        }
+
+        .user-dropdown-menu a {
+            display: block;
+            padding: 16px 24px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 1px solid #f5f5f5;
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        .user-dropdown-menu a:last-child {
+            border-bottom: none;
+        }
+
+        .user-dropdown-menu a:hover {
+            background: linear-gradient(to right, #f0f5ff, #e6f0ff);
+            color: #0033a0;
+            padding-left: 32px;
+        }
+
+        .user-dropdown-menu a::before {
+            content: '›';
+            position: absolute;
+            left: 16px;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .user-dropdown-menu a:hover::before {
+            opacity: 1;
+        }
+
+        .user-dropdown-menu a:active {
+            background: #d6e8ff;
+            transform: scale(0.98);
+        }
+
+        /* Overlay để đóng dropdown khi click bên ngoài */
+        .dropdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999998;
+            display: none;
+        }
+
+        .dropdown-overlay.show {
+            display: block;
+        }
+
+        /* ===== SLIDE-IN CART PANEL ===== */
+        .cart-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .cart-panel-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .cart-panel {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100%;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-panel.active {
+            right: 0;
+        }
+
+        .cart-panel-header {
+            padding: 20px;
+            background: #0033a0;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-panel-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .cart-panel-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .cart-panel-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .cart-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .cart-panel-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .cart-panel-empty-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .cart-panel-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .cart-panel-item-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f9f9f9;
+        }
+
+        .cart-panel-item-info {
+            flex: 1;
+        }
+
+        .cart-panel-item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .cart-panel-item-price {
+            font-size: 14px;
+            color: #ff6b00;
+            font-weight: 700;
+        }
+
+        .cart-panel-item-quantity {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .cart-panel-footer {
+            padding: 20px;
+            border-top: 2px solid #f0f0f0;
+            background: white;
+        }
+
+        .cart-panel-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .cart-panel-total-value {
+            color: #ff6b00;
+        }
+
+        .cart-panel-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-cart-action {
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+
+        .btn-view-cart {
+            background: #0033a0;
+            color: white;
+        }
+
+        .btn-view-cart:hover {
+            background: #002780;
+        }
+
+        .btn-checkout {
+            background: #ff6b00;
+            color: white;
+        }
+
+        .btn-checkout:hover {
+            background: #e55d00;
+        }
+
+        /* ===== WISHLIST PANEL (tương tự Cart) ===== */
+        .wishlist-panel {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100%;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wishlist-panel.active {
+            right: 0;
+        }
+
+        .wishlist-panel-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #ff6b00 0%, #ff8533 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+
+            .cart-panel,
+            .wishlist-panel {
+                width: 100%;
+                right: -100%;
+            }
+        }
+
+        /* Rest of your existing header styles... */
         .header-top {
             background: rgba(0, 51, 160, 0.95);
             backdrop-filter: blur(10px);
@@ -55,7 +416,6 @@ $currentUser = AuthController::getCurrentUser();
             overflow: hidden;
         }
 
-        /* Ẩn top bar khi scroll */
         .site-header.scrolled .header-top {
             opacity: 0;
             max-height: 0;
@@ -93,7 +453,6 @@ $currentUser = AuthController::getCurrentUser();
             opacity: 0.8;
         }
 
-        /* ===== MAIN HEADER ===== */
         .header-main {
             background: transparent;
             transition: all 0.4s ease;
@@ -113,12 +472,10 @@ $currentUser = AuthController::getCurrentUser();
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Thu nhỏ header khi scroll */
         .site-header.scrolled .header-main-content {
             height: 60px;
         }
 
-        /* ===== LOGO ===== */
         .site-logo {
             display: flex;
             align-items: center;
@@ -131,12 +488,10 @@ $currentUser = AuthController::getCurrentUser();
             transition: all 0.4s ease;
         }
 
-        /* Logo nhỏ hơn khi scroll */
         .site-header.scrolled .logo-img {
             height: 38px;
         }
 
-        /* ===== NAVIGATION ===== */
         .main-nav {
             flex: 1;
             display: flex;
@@ -167,7 +522,6 @@ $currentUser = AuthController::getCurrentUser();
             gap: 5px;
         }
 
-        /* Text màu xanh khi scroll */
         .site-header.scrolled .nav-link {
             color: #0033a0 !important;
         }
@@ -176,7 +530,6 @@ $currentUser = AuthController::getCurrentUser();
             opacity: 0.8;
         }
 
-        /* ===== HEADER ACTIONS ===== */
         .header-actions {
             display: flex;
             gap: 15px;
@@ -196,7 +549,6 @@ $currentUser = AuthController::getCurrentUser();
             justify-content: center;
         }
 
-        /* Icon màu đen khi scroll */
         .site-header.scrolled .action-btn {
             color: #333 !important;
         }
@@ -224,260 +576,6 @@ $currentUser = AuthController::getCurrentUser();
             padding: 1px 5px;
             border-radius: 10px;
         }
-
-        /* ===== USER DROPDOWN ===== */
-        .user-dropdown-wrapper {
-            position: relative;
-        }
-
-        .user-greeting {
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-            transition: color 0.3s;
-        }
-
-        .site-header.scrolled .user-greeting {
-            color: #0033a0 !important;
-        }
-
-        .user-dropdown-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            min-width: 200px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            border-radius: 8px;
-            overflow: hidden;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-
-        .user-dropdown-wrapper:hover .user-dropdown-menu {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        .user-dropdown-menu a {
-            display: block;
-            padding: 12px 20px;
-            color: #333;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-
-        .user-dropdown-menu a:hover {
-            background: #f5f5f5;
-        }
-
-        /* ===== MEGA MENU ===== */
-        .has-dropdown {
-            position: relative;
-        }
-
-        .dropdown-icon {
-            width: 10px;
-            height: 10px;
-            transition: transform 0.3s;
-        }
-
-        .has-dropdown:hover .dropdown-icon {
-            transform: rotate(180deg);
-        }
-
-        .mega-menu {
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            min-width: 800px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            border-radius: 12px;
-            padding: 30px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            margin-top: 15px;
-        }
-
-        .has-dropdown:hover .mega-menu {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .mega-menu-content {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 30px;
-        }
-
-        .mega-menu-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #0033a0;
-            margin-bottom: 15px;
-        }
-
-        .mega-menu-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .mega-menu-list li {
-            margin-bottom: 10px;
-        }
-
-        .mega-menu-list a {
-            color: #666;
-            text-decoration: none;
-            font-size: 13px;
-            transition: color 0.2s;
-        }
-
-        .mega-menu-list a:hover {
-            color: #0033a0;
-        }
-
-        /* ===== SEARCH OVERLAY ===== */
-        .search-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .search-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .search-overlay-content {
-            max-width: 800px;
-            width: 90%;
-            position: relative;
-        }
-
-        .search-close {
-            position: absolute;
-            top: -50px;
-            right: 0;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 40px;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1;
-        }
-
-        .search-form {
-            display: flex;
-            gap: 10px;
-        }
-
-        .search-input {
-            flex: 1;
-            padding: 20px 30px;
-            font-size: 18px;
-            border: none;
-            border-radius: 50px;
-            outline: none;
-        }
-
-        .search-submit {
-            padding: 20px 40px;
-            background: #0033a0;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .search-submit:hover {
-            background: #002780;
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 1024px) {
-            .main-nav {
-                display: none;
-            }
-
-            .header-main-content {
-                justify-content: space-between;
-            }
-
-            .mega-menu {
-                min-width: 600px;
-            }
-
-            .mega-menu-content {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .header-top-content {
-                padding: 0 20px;
-                font-size: 11px;
-                flex-direction: column;
-                gap: 3px;
-            }
-
-            .header-main .container-header {
-                padding: 0 20px;
-            }
-
-            .header-main-content {
-                height: 60px;
-            }
-
-            .logo-img {
-                height: 40px;
-            }
-
-            .site-header.scrolled .header-main-content {
-                height: 55px;
-            }
-
-            .site-header.scrolled .logo-img {
-                height: 35px;
-            }
-
-            .mega-menu {
-                min-width: 90vw;
-                left: 5vw;
-                transform: none;
-            }
-
-            .mega-menu-content {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-        }
     </style>
 </head>
 
@@ -497,17 +595,18 @@ $currentUser = AuthController::getCurrentUser();
                     <div class="header-top-right">
                         <?php if ($isLoggedIn): ?>
                             <div class="user-dropdown-wrapper">
-                                <span class="user-greeting">
-                                    👤 Xin chào, <?php echo htmlspecialchars($currentUser['name'] ?: $currentUser['phone']); ?>
+                                <span class="user-greeting" onclick="toggleUserDropdown(event)">
+                                    👤 Xin chào, <?php echo htmlspecialchars($currentUser['name'] ?: $currentUser['phone']); ?> ▾
                                 </span>
 
-                                <div class="user-dropdown-menu">
-                                    <a href="index.php?controller=user&action=profile">Thông tin cá nhân</a>
-                                    <a href="index.php?controller=order&action=history">Đơn hàng của tôi</a>
-                                    <a href="index.php?controller=wishlist">Danh sách yêu thích</a>
-                                    <a href="index.php?controller=auth&action=logout">Đăng xuất</a>
+                                <div class="user-dropdown-menu" id="userDropdownMenu">
+                                    <a href="index.php?controller=user&action=profile">📝 Thông tin cá nhân</a>
+                                    <a href="index.php?controller=order&action=history">📦 Đơn hàng của tôi</a>
+                                    <a href="#" onclick="toggleWishlistPanel(); closeUserDropdown(); return false;">❤️ Danh sách yêu thích</a>
+                                    <a href="index.php?controller=auth&action=logout">🚪 Đăng xuất</a>
                                 </div>
                             </div>
+                            <div class="dropdown-overlay" id="dropdownOverlay" onclick="closeUserDropdown()"></div>
                         <?php else: ?>
                             <a href="index.php?controller=auth&action=showLogin">Đăng nhập</a>
                             <span>|</span>
@@ -522,76 +621,21 @@ $currentUser = AuthController::getCurrentUser();
         <div class="header-main">
             <div class="container-header">
                 <div class="header-main-content">
-                    <!-- Logo -->
                     <a href="index.php" class="site-logo">
                         <img src="uploads/vinamilk-logo_brandlogos.net_quayf.png" alt="Vinamilk" class="logo-img">
                     </a>
 
-                    <!-- Navigation -->
                     <nav class="main-nav">
                         <ul class="nav-menu">
                             <li class="nav-item">
                                 <a href="index.php" class="nav-link">Trang chủ</a>
                             </li>
-
-                            <li class="nav-item has-dropdown">
-                                <a href="index.php?controller=product&action=productList" class="nav-link">
-                                    Sản phẩm
-                                    <svg class="dropdown-icon" width="10" height="6" viewBox="0 0 10 6" fill="none">
-                                        <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="2" />
-                                    </svg>
-                                </a>
-
-                                <!-- Mega menu -->
-                                <div class="mega-menu">
-                                    <div class="mega-menu-content">
-                                        <div class="mega-menu-column">
-                                            <h4 class="mega-menu-title">Sữa bột trẻ em</h4>
-                                            <ul class="mega-menu-list">
-                                                <li><a href="?type=optimum">Optimum Gold</a></li>
-                                                <li><a href="?type=yoko">YokoGold +</a></li>
-                                                <li><a href="?type=dielac">Dielac Alpha Gold</a></li>
-                                            </ul>
-                                        </div>
-
-                                        <div class="mega-menu-column">
-                                            <h4 class="mega-menu-title">Sữa tươi</h4>
-                                            <ul class="mega-menu-list">
-                                                <li><a href="?type=100">Sữa tươi 100%</a></li>
-                                                <li><a href="?type=green-farm">Green Farm</a></li>
-                                                <li><a href="?type=organic">Sữa tươi Organic</a></li>
-                                            </ul>
-                                        </div>
-
-                                        <div class="mega-menu-column">
-                                            <h4 class="mega-menu-title">Sữa chua</h4>
-                                            <ul class="mega-menu-list">
-                                                <li><a href="?type=vinamilk-yogurt">Sữa chua uống</a></li>
-                                                <li><a href="?type=probi">Probi</a></li>
-                                                <li><a href="?type=yo">Sữa chua Yo</a></li>
-                                            </ul>
-                                        </div>
-
-                                        <div class="mega-menu-column">
-                                            <h4 class="mega-menu-title">Sản phẩm khác</h4>
-                                            <ul class="mega-menu-list">
-                                                <li><a href="?type=condensed-milk">Sữa đặc</a></li>
-                                                <li><a href="?type=ice-cream">Kem</a></li>
-                                                <li><a href="?type=cheese">Phô mai</a></li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
+                            <li class="nav-item">
+                                <a href="index.php?controller=product&action=productList" class="nav-link">Sản phẩm</a>
                             </li>
-
                             <li class="nav-item">
                                 <a href="index.php?controller=store" class="nav-link">Cửa hàng</a>
                             </li>
-
-                            <li class="nav-item">
-                                <a href="#about" class="nav-link">Về Vinamilk</a>
-                            </li>
-
                             <?php if (AuthController::isAdmin()): ?>
                                 <li class="nav-item">
                                     <a href="index.php?controller=admin&action=dashboard" class="nav-link">Admin</a>
@@ -600,59 +644,136 @@ $currentUser = AuthController::getCurrentUser();
                         </ul>
                     </nav>
 
-                    <!-- Header actions -->
                     <div class="header-actions">
-                        <!-- Search -->
-                        <button class="action-btn search-btn" onclick="toggleSearch()" aria-label="Tìm kiếm">
-                            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                                <path d="M19 19L13 13M15 8C15 11.866 11.866 15 8 15C4.13401 15 1 11.866 1 8C1 4.13401 4.13401 1 8 1C11.866 1 15 4.13401 15 8Z" stroke="currentColor" stroke-width="2" />
-                            </svg>
-                        </button>
-
-                        <!-- Wishlist -->
                         <?php if ($isLoggedIn): ?>
-                            <a href="index.php?controller=wishlist" class="action-btn wishlist-btn" aria-label="Yêu thích">
+                            <button class="action-btn wishlist-btn" onclick="toggleWishlistPanel()" aria-label="Yêu thích">
                                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                                     <path d="M10 18L2 10C0.5 8.5 0 6.5 1 4.5C2 2.5 4 2 6 3C7 3.5 8 4.5 10 7C12 4.5 13 3.5 14 3C16 2 18 2.5 19 4.5C20 6.5 19.5 8.5 18 10L10 18Z" stroke="currentColor" stroke-width="2" />
                                 </svg>
-                                <span id="wishlist-count-badge" class="badge" style="display: none;">0</span>
-                            </a>
+                                <?php if ($wishlistCount > 0): ?>
+                                    <span class="badge" id="wishlist-count-badge"><?php echo $wishlistCount; ?></span>
+                                <?php endif; ?>
+                            </button>
                         <?php endif; ?>
 
-                        <!-- Cart -->
-                        <a href="index.php?controller=cart&action=view" class="action-btn cart-btn" aria-label="Giỏ hàng">
+                        <button class="action-btn cart-btn" onclick="toggleCartPanel()" aria-label="Giỏ hàng">
                             <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                                 <path d="M1 1H4L6 13H16L18 5H5" stroke="currentColor" stroke-width="2" />
                                 <circle cx="7" cy="17" r="1" fill="currentColor" />
                                 <circle cx="15" cy="17" r="1" fill="currentColor" />
                             </svg>
                             <?php if ($cartCount > 0): ?>
-                                <span class="badge"><?php echo $cartCount; ?></span>
+                                <span class="badge" id="cart-count-badge"><?php echo $cartCount; ?></span>
                             <?php endif; ?>
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Search overlay -->
-        <div class="search-overlay" id="searchOverlay">
-            <div class="search-overlay-content">
-                <button class="search-close" onclick="toggleSearch()">×</button>
-                <form class="search-form" action="index.php" method="GET">
-                    <input type="hidden" name="controller" value="product">
-                    <input type="hidden" name="action" value="search">
-                    <input type="text" name="keyword" class="search-input" placeholder="Tìm kiếm sản phẩm..." autofocus>
-                    <button type="submit" class="search-submit">Tìm kiếm</button>
-                </form>
-            </div>
-        </div>
     </header>
+
+    <!-- Cart Panel Overlay -->
+    <div class="cart-panel-overlay" id="cartOverlay" onclick="toggleCartPanel()"></div>
+
+    <!-- Cart Panel -->
+    <div class="cart-panel" id="cartPanel">
+        <div class="cart-panel-header">
+            <h3 class="cart-panel-title">🛒 Giỏ hàng (<?php echo $cartCount; ?>)</h3>
+            <button class="cart-panel-close" onclick="toggleCartPanel()">×</button>
+        </div>
+
+        <div class="cart-panel-body">
+            <?php if (empty($cartItems)): ?>
+                <div class="cart-panel-empty">
+                    <div class="cart-panel-empty-icon">🛒</div>
+                    <p>Giỏ hàng trống</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($cartItems as $item): ?>
+                    <div class="cart-panel-item">
+                        <?php if (!empty($item['image']) && file_exists(__DIR__ . '/../uploads/' . $item['image'])): ?>
+                            <img src="uploads/<?php echo htmlspecialchars($item['image']); ?>" class="cart-panel-item-image">
+                        <?php else: ?>
+                            <div class="cart-panel-item-image" style="background: #e0e0e0;"></div>
+                        <?php endif; ?>
+
+                        <div class="cart-panel-item-info">
+                            <div class="cart-panel-item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                            <div class="cart-panel-item-price"><?php echo number_format($item['price'], 0, ',', '.'); ?>₫</div>
+                            <div class="cart-panel-item-quantity">Số lượng: <?php echo $item['quantity']; ?></div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <?php if (!empty($cartItems)): ?>
+            <div class="cart-panel-footer">
+                <div class="cart-panel-total">
+                    <span>Tổng cộng:</span>
+                    <span class="cart-panel-total-value"><?php echo number_format($cartTotal, 0, ',', '.'); ?>₫</span>
+                </div>
+
+                <div class="cart-panel-actions">
+                    <a href="index.php?controller=cart&action=view" class="btn-cart-action btn-view-cart">
+                        Xem giỏ hàng
+                    </a>
+                    <a href="index.php?controller=payment&action=checkout" class="btn-cart-action btn-checkout">
+                        Thanh toán ngay
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Wishlist Panel -->
+    <div class="cart-panel-overlay" id="wishlistOverlay" onclick="toggleWishlistPanel()"></div>
+
+    <div class="wishlist-panel" id="wishlistPanel">
+        <div class="wishlist-panel-header">
+            <h3 class="cart-panel-title">❤️ Yêu thích (<?php echo $wishlistCount; ?>)</h3>
+            <button class="cart-panel-close" onclick="toggleWishlistPanel()">×</button>
+        </div>
+
+        <div class="cart-panel-body">
+            <?php if (empty($wishlistItems)): ?>
+                <div class="cart-panel-empty">
+                    <div class="cart-panel-empty-icon">💔</div>
+                    <p>Danh sách yêu thích trống</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($wishlistItems as $item): ?>
+                    <div class="cart-panel-item">
+                        <?php if (!empty($item['image']) && file_exists(__DIR__ . '/../uploads/' . $item['image'])): ?>
+                            <img src="uploads/<?php echo htmlspecialchars($item['image']); ?>" class="cart-panel-item-image">
+                        <?php else: ?>
+                            <div class="cart-panel-item-image" style="background: #e0e0e0;"></div>
+                        <?php endif; ?>
+
+                        <div class="cart-panel-item-info">
+                            <div class="cart-panel-item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                            <div class="cart-panel-item-price"><?php echo number_format($item['price'], 0, ',', '.'); ?>₫</div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <?php if (!empty($wishlistItems)): ?>
+            <div class="cart-panel-footer">
+                <div class="cart-panel-actions">
+                    <a href="index.php?controller=wishlist" class="btn-cart-action btn-view-cart">
+                        Xem danh sách
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <main class="site-content">
 
         <script>
-            // ========== SMOOTH HEADER SCROLL EFFECT ==========
+            // Header scroll effect
             let lastScrollTop = 0;
             const header = document.querySelector('.site-header');
             const scrollThreshold = 50;
@@ -671,49 +792,68 @@ $currentUser = AuthController::getCurrentUser();
                 passive: true
             });
 
-            // ========== TOGGLE SEARCH ==========
-            function toggleSearch() {
-                const overlay = document.getElementById('searchOverlay');
+            // Toggle Cart Panel
+            function toggleCartPanel() {
+                const panel = document.getElementById('cartPanel');
+                const overlay = document.getElementById('cartOverlay');
+
+                panel.classList.toggle('active');
                 overlay.classList.toggle('active');
 
-                if (overlay.classList.contains('active')) {
+                if (panel.classList.contains('active')) {
                     document.body.style.overflow = 'hidden';
-                    setTimeout(() => {
-                        overlay.querySelector('.search-input')?.focus();
-                    }, 100);
                 } else {
                     document.body.style.overflow = '';
                 }
             }
 
-            // ESC key to close search
+            // Toggle Wishlist Panel
+            function toggleWishlistPanel() {
+                const panel = document.getElementById('wishlistPanel');
+                const overlay = document.getElementById('wishlistOverlay');
+
+                panel.classList.toggle('active');
+                overlay.classList.toggle('active');
+
+                if (panel.classList.contains('active')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
+            }
+
+            // Toggle User Dropdown (Click version)
+            function toggleUserDropdown(event) {
+                event.stopPropagation();
+                const menu = document.getElementById('userDropdownMenu');
+                const overlay = document.getElementById('dropdownOverlay');
+
+                menu.classList.toggle('show');
+                overlay.classList.toggle('show');
+            }
+
+            function closeUserDropdown() {
+                const menu = document.getElementById('userDropdownMenu');
+                const overlay = document.getElementById('dropdownOverlay');
+
+                menu.classList.remove('show');
+                overlay.classList.remove('show');
+            }
+
+            // Close dropdown on ESC key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    const overlay = document.getElementById('searchOverlay');
-                    if (overlay?.classList.contains('active')) {
-                        toggleSearch();
+                    closeUserDropdown();
+
+                    const cartPanel = document.getElementById('cartPanel');
+                    const wishlistPanel = document.getElementById('wishlistPanel');
+
+                    if (cartPanel.classList.contains('active')) {
+                        toggleCartPanel();
+                    }
+                    if (wishlistPanel.classList.contains('active')) {
+                        toggleWishlistPanel();
                     }
                 }
-            });
-
-            // Click outside to close search
-            document.getElementById('searchOverlay')?.addEventListener('click', (e) => {
-                if (e.target.id === 'searchOverlay') {
-                    toggleSearch();
-                }
-            });
-
-            // ========== SMOOTH SCROLL ==========
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function(e) {
-                    const href = this.getAttribute('href');
-                    if (href !== '#' && document.querySelector(href)) {
-                        e.preventDefault();
-                        document.querySelector(href).scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                });
             });
         </script>
