@@ -28,13 +28,45 @@
     </div>
     <div class="footer-bottom">
         <p class="footer-copyright">&copy; 2025 Vinamilk. Tất cả quyền được bảo lưu.</p>
+
+        <!-- ✅ NÚT ĐĂNG XUẤT -->
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <a href="index.php?controller=auth&action=logout" class="btn-logout-footer" title="Đăng xuất">
+                🚪
+            </a>
+        <?php endif; ?>
     </div>
 </footer>
 
 <?php
-
 require_once __DIR__ . '/chatbox_widget.php';
 ?>
+
+<style>
+    /* Nút đăng xuất */
+    .btn-logout-footer {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background-color: rgba(255, 255, 255, 0.15);
+        color: #bdc3c7;
+        text-decoration: none;
+        border-radius: 50%;
+        font-size: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        margin-top: 15px;
+    }
+
+    .btn-logout-footer:hover {
+        background-color: #dc3545;
+        color: white;
+        border-color: #dc3545;
+        transform: scale(1.1);
+    }
+</style>
 
 </body>
 

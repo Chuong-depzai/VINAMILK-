@@ -1,4 +1,5 @@
 <div class="page-container">
+    <br> <br> <br><br> <br>
     <div class="auth-container">
         <div class="auth-box">
             <h1 class="auth-title">Đăng ký</h1>
