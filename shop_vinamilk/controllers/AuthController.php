@@ -46,13 +46,13 @@ class AuthController
             return;
         }
 
-        // ✅ KIỂM TRA RECAPTCHA
-        $recaptchaToken = $_POST['recaptcha_token'] ?? '';
-        $recaptchaResult = $this->recaptchaService->verify($recaptchaToken, 'login');
+        // ✅ RECAPTCHA VALIDATION
+        $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
+        $recaptchaResult = $this->recaptchaService->verify($recaptchaResponse, 'login');
 
         if (!$recaptchaResult['success']) {
-            $error = 'Xác thực bảo mật thất bại. Vui lòng thử lại.';
-            error_log("Failed login attempt - reCAPTCHA score: " . $recaptchaResult['score']);
+            $error = '❌ Xác thực bảo mật thất bại. Vui lòng thử lại.';
+            error_log("Failed login attempt - reCAPTCHA failed: " . json_encode($recaptchaResult));
 
             require_once __DIR__ . '/../views/header.php';
             require_once __DIR__ . '/../views/login.php';
@@ -61,61 +61,65 @@ class AuthController
         }
 
         // ✅ RATE LIMITING - Giới hạn 5 lần/5 phút
-        if (!$this->checkRateLimit('login', 5, 300)) {
-            $error = 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau 5 phút.';
+        $phone = $_POST['phone'] ?? '';
+
+        if (!$this->checkRateLimit('login_' . $phone, 5, 300)) {
+            $error = '⏱️ Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau 5 phút.';
             require_once __DIR__ . '/../views/header.php';
             require_once __DIR__ . '/../views/login.php';
             require_once __DIR__ . '/../views/footer.php';
             return;
         }
 
-        $phone = $_POST['phone'] ?? '';
-        $password = $_POST['password'] ?? '';
-        $error = '';
+        // Validate input
+        if (empty($phone) || empty($_POST['password'] ?? '')) {
+            $error = '⚠️ Vui lòng nhập đầy đủ số điện thoại và mật khẩu';
+            require_once __DIR__ . '/../views/header.php';
+            require_once __DIR__ . '/../views/login.php';
+            require_once __DIR__ . '/../views/footer.php';
+            return;
+        }
 
-        if (empty($phone) || empty($password)) {
-            $error = 'Vui lòng nhập đầy đủ số điện thoại và mật khẩu';
-        } else {
-            // ✅ KIỂM TRA ACCOUNT LOCK
-            if ($this->isAccountLocked($phone)) {
-                $error = 'Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần. Vui lòng đặt lại mật khẩu.';
-                require_once __DIR__ . '/../views/header.php';
-                require_once __DIR__ . '/../views/login.php';
-                require_once __DIR__ . '/../views/footer.php';
-                return;
-            }
+        // ✅ KIỂM TRA ACCOUNT LOCK
+        if ($this->isAccountLocked($phone)) {
+            $error = '🔒 Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần. Vui lòng đặt lại mật khẩu.';
+            require_once __DIR__ . '/../views/header.php';
+            require_once __DIR__ . '/../views/login.php';
+            require_once __DIR__ . '/../views/footer.php';
+            return;
+        }
 
-            $user = $this->userModel->login($phone, $password);
+        $password = $_POST['password'];
+        $user = $this->userModel->login($phone, $password);
 
-            if ($user) {
-                // ✅ RESET failed login attempts
-                $this->resetFailedAttempts($phone);
+        if ($user) {
+            // ✅ RESET failed login attempts
+            $this->resetFailedAttempts($phone);
 
-                // LƯU ĐẦY ĐỦ THÔNG TIN VÀO SESSION
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_phone'] = $user['phone'];
-                $_SESSION['user_name'] = $user['full_name'];
-                $_SESSION['user_email'] = $user['email'];
-                $_SESSION['user_role'] = $user['role'];
-                $_SESSION['user_avatar'] = $user['avatar'];
+            // LƯU ĐẦY ĐỦ THÔNG TIN VÀO SESSION
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_phone'] = $user['phone'];
+            $_SESSION['user_name'] = $user['full_name'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_role'] = $user['role'];
+            $_SESSION['user_avatar'] = $user['avatar'];
 
-                // Chuyển hướng về trang admin nếu là admin
-                if ($user['role'] === 'admin') {
-                    header("Location: index.php?controller=admin&action=dashboard");
-                } else {
-                    header("Location: index.php");
-                }
-                exit;
+            // Redirect dựa trên role
+            if ($user['role'] === 'admin') {
+                header("Location: index.php?controller=admin&action=dashboard");
             } else {
-                // ✅ INCREMENT failed login attempts
-                $this->incrementFailedAttempts($phone);
-                $remainingAttempts = $this->getRemainingAttempts($phone);
+                header("Location: index.php");
+            }
+            exit;
+        } else {
+            // ✅ INCREMENT failed login attempts
+            $this->incrementFailedAttempts($phone);
+            $remainingAttempts = $this->getRemainingAttempts($phone);
 
-                if ($remainingAttempts > 0) {
-                    $error = "Số điện thoại hoặc mật khẩu không đúng. Còn {$remainingAttempts} lần thử.";
-                } else {
-                    $error = 'Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần.';
-                }
+            if ($remainingAttempts > 0) {
+                $error = "❌ Số điện thoại hoặc mật khẩu không đúng. Còn {$remainingAttempts} lần thử.";
+            } else {
+                $error = '🔒 Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần.';
             }
         }
 
@@ -124,9 +128,6 @@ class AuthController
         require_once __DIR__ . '/../views/footer.php';
     }
 
-    // ============================================
-    // REGISTER METHODS
-    // ============================================
 
     public function showRegister()
     {
@@ -147,17 +148,7 @@ class AuthController
             return;
         }
 
-        // ✅ KIỂM TRA RECAPTCHA
-        $recaptchaToken = $_POST['recaptcha_token'] ?? '';
-        $recaptchaResult = $this->recaptchaService->verify($recaptchaToken, 'register');
-
-        if (!$recaptchaResult['success']) {
-            $error = 'Xác thực bảo mật thất bại. Vui lòng thử lại.';
-            require_once __DIR__ . '/../views/header.php';
-            require_once __DIR__ . '/../views/register.php';
-            require_once __DIR__ . '/../views/footer.php';
-            return;
-        }
+        // ❌ KHÔNG KIỂM TRA RECAPTCHA CHO ĐĂNG KÝ
 
         // ✅ RATE LIMITING - 3 lần đăng ký/giờ
         if (!$this->checkRateLimit('register', 3, 3600)) {
@@ -271,6 +262,7 @@ class AuthController
 
                     if ($emailSent) {
                         $_SESSION['reset_email'] = $email;
+                        $_SESSION['reset_code'] = $code; // Lưu code cho test
                         header("Location: index.php?controller=auth&action=showVerifyCode");
                         exit;
                     } else {
@@ -334,6 +326,7 @@ class AuthController
                     if ($updated) {
                         $this->passwordResetModel->markAsUsed($email, $code);
                         unset($_SESSION['reset_email']);
+                        unset($_SESSION['reset_code']);
 
                         $_SESSION['reset_success'] = 'Đổi mật khẩu thành công! Vui lòng đăng nhập';
                         header("Location: index.php?controller=auth&action=showLogin");

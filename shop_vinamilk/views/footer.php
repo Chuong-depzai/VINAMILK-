@@ -68,6 +68,10 @@ require_once __DIR__ . '/chatbox_widget.php';
     }
 </style>
 
+<!-- ✅ THÊM 2 SCRIPT TRƯỚC </body> -->
+<script src="js/cart-counter.js"></script>
+<script src="js/notification-system.js"></script>
+
 </body>
 
 </html>

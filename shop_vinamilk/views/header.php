@@ -576,6 +576,152 @@ if ($isLoggedIn) {
             padding: 1px 5px;
             border-radius: 10px;
         }
+
+        .user-avatar,
+        .user-avatar-placeholder {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .user-avatar {
+            object-fit: cover;
+        }
+
+        .user-avatar-placeholder {
+            background: white;
+            color: #0033a0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .user-name-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .site-header.scrolled .user-name-text {
+            color: #0033a0;
+        }
+
+        .user-role-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(255, 107, 0, 0.3);
+            color: #ff6b00;
+            font-weight: 700;
+        }
+
+        .dropdown-user-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #0033a0 0%, #005ce6 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .dropdown-avatar-large,
+        .dropdown-avatar-placeholder-large {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .dropdown-avatar-large {
+            object-fit: cover;
+        }
+
+        .dropdown-avatar-placeholder-large {
+            background: white;
+            color: #0033a0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 28px;
+        }
+
+        .dropdown-user-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .dropdown-user-email {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .dropdown-menu-items {
+            padding: 8px 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 1px solid #f5f5f5;
+            position: relative;
+        }
+
+        .dropdown-item:hover {
+            background: linear-gradient(to right, #f0f5ff, #e6f0ff);
+            color: #0033a0;
+            padding-left: 28px;
+        }
+
+        .dropdown-item-icon {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .dropdown-badge {
+            margin-left: auto;
+            background: #ff6b00;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .dropdown-item.admin-item {
+            background: #fff5e6;
+            border-top: 2px solid #ffeaa7;
+            border-bottom: 2px solid #ffeaa7;
+        }
+
+        .dropdown-item.logout {
+            color: #dc3545;
+            border-top: 2px solid #f0f0f0;
+            border-bottom: none;
+        }
+
+        .dropdown-item.logout:hover {
+            background: #fff5f5;
+        }
     </style>
 </head>
 
@@ -595,15 +741,90 @@ if ($isLoggedIn) {
                     <div class="header-top-right">
                         <?php if ($isLoggedIn): ?>
                             <div class="user-dropdown-wrapper">
-                                <span class="user-greeting" onclick="toggleUserDropdown(event)">
-                                    👤 Xin chào, <?php echo htmlspecialchars($currentUser['name'] ?: $currentUser['phone']); ?> ▾
-                                </span>
+                                <div class="user-greeting" onclick="toggleUserDropdown(event)">
+                                    <!-- Avatar -->
+                                    <?php if (!empty($currentUser['avatar'])): ?>
+                                        <img src="uploads/avatars/<?php echo htmlspecialchars($currentUser['avatar']); ?>"
+                                            class="user-avatar"
+                                            alt="Avatar">
+                                    <?php else: ?>
+                                        <div class="user-avatar-placeholder">
+                                            <?php echo strtoupper(substr($currentUser['name'] ?? 'U', 0, 1)); ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- User Info -->
+                                    <div class="user-info">
+                                        <span class="user-name-text">
+                                            <?php echo htmlspecialchars($currentUser['name'] ?? $currentUser['phone']); ?>
+                                        </span>
+                                        <?php if ($currentUser['role'] === 'admin'): ?>
+                                            <span class="user-role-badge">👑 ADMIN</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span style="margin-left: 4px;">▾</span>
+                                </div>
 
                                 <div class="user-dropdown-menu" id="userDropdownMenu">
-                                    <a href="index.php?controller=user&action=profile">📝 Thông tin cá nhân</a>
-                                    <a href="index.php?controller=order&action=history">📦 Đơn hàng của tôi</a>
-                                    <a href="#" onclick="toggleWishlistPanel(); closeUserDropdown(); return false;">❤️ Danh sách yêu thích</a>
-                                    <a href="index.php?controller=auth&action=logout">🚪 Đăng xuất</a>
+                                    <!-- Dropdown Header -->
+                                    <div class="dropdown-user-header">
+                                        <?php if (!empty($currentUser['avatar'])): ?>
+                                            <img src="uploads/avatars/<?php echo htmlspecialchars($currentUser['avatar']); ?>"
+                                                class="dropdown-avatar-large"
+                                                alt="Avatar">
+                                        <?php else: ?>
+                                            <div class="dropdown-avatar-placeholder-large">
+                                                <?php echo strtoupper(substr($currentUser['name'] ?? 'U', 0, 1)); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="dropdown-user-name">
+                                            <?php echo htmlspecialchars($currentUser['name'] ?? 'Người dùng'); ?>
+                                        </div>
+                                        <div class="dropdown-user-email">
+                                            <?php echo htmlspecialchars($currentUser['email'] ?? $currentUser['phone']); ?>
+                                        </div>
+                                    </div>
+
+                                    <!-- Menu Items -->
+                                    <div class="dropdown-menu-items">
+                                        <a href="index.php?controller=user&action=profile" class="dropdown-item">
+                                            <span class="dropdown-item-icon">👤</span>
+                                            <span>Thông tin cá nhân & Avatar</span>
+                                        </a>
+
+                                        <a href="index.php?controller=order&action=history" class="dropdown-item">
+                                            <span class="dropdown-item-icon">📦</span>
+                                            <span>Đơn hàng của tôi</span>
+                                        </a>
+
+                                        <a href="index.php?controller=wishlist" class="dropdown-item">
+                                            <span class="dropdown-item-icon">❤️</span>
+                                            <span>Danh sách yêu thích</span>
+                                            <?php if ($wishlistCount > 0): ?>
+                                                <span class="dropdown-badge"><?php echo $wishlistCount; ?></span>
+                                            <?php endif; ?>
+                                        </a>
+
+                                        <a href="index.php?controller=cart&action=view" class="dropdown-item">
+                                            <span class="dropdown-item-icon">🛒</span>
+                                            <span>Giỏ hàng</span>
+                                            <?php if ($cartCount > 0): ?>
+                                                <span class="dropdown-badge"><?php echo $cartCount; ?></span>
+                                            <?php endif; ?>
+                                        </a>
+
+                                        <?php if ($currentUser['role'] === 'admin'): ?>
+                                            <a href="index.php?controller=admin&action=dashboard" class="dropdown-item admin-item">
+                                                <span class="dropdown-item-icon">⚙️</span>
+                                                <span>Quản trị hệ thống</span>
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <a href="index.php?controller=auth&action=logout" class="dropdown-item logout">
+                                            <span class="dropdown-item-icon">🚪</span>
+                                            <span>Đăng xuất</span>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             <div class="dropdown-overlay" id="dropdownOverlay" onclick="closeUserDropdown()"></div>

@@ -1,115 +1,161 @@
 <?php
 
 /**
- * ReCaptchaService - xác thực reCAPTCHA v2 Checkbox
- * 
- * Type: Challenge (v2) > "I'm not a robot" Checkbox
+ * ReCaptcha Service - Xử lý reCAPTCHA v2
  */
 
 class ReCaptchaService
 {
-    private $config;
+    private $siteKey;
+    private $secretKey;
+    private $verifyUrl;
+    private $enabled;
 
     public function __construct()
     {
-        $this->config = require __DIR__ . '/../config/recaptcha.php';
+        $config = require __DIR__ . '/../config/recaptcha.php';
+        $this->siteKey = $config['site_key'];
+        $this->secretKey = $config['secret_key'];
+        $this->verifyUrl = $config['verify_url'];
+        $this->enabled = $config['enabled'];
     }
 
     /**
-     * Xác thực reCAPTCHA token từ form submit
-     * 
-     * @param string $token Token từ input hidden (g-recaptcha-response)
-     * @param string $action Action name (login, register, etc.) - không dùng cho v2
-     * @return array ['success' => bool, 'score' => float]
+     * Render script tải reCAPTCHA
      */
-    public function verify($token, $action = null)
+    public function renderScript()
     {
-        // Nếu tắt reCAPTCHA (dev mode)
-        if (!$this->config['enabled']) {
+        if (!$this->enabled) {
+            return '';
+        }
+
+        return '
+            <script src="https://www.google.com/recaptcha/api.js"></script>
+        ';
+    }
+
+    /**
+     * Render reCAPTCHA Checkbox Widget
+     */
+    public function renderCheckbox()
+    {
+        if (!$this->enabled) {
+            return '';
+        }
+
+        return '
+            <div class="g-recaptcha" data-sitekey="' . htmlspecialchars($this->siteKey) . '"></div>
+        ';
+    }
+
+    /**
+     * Verify reCAPTCHA Token từ Server
+     * @return array ['success' => bool, 'score' => float, 'message' => string]
+     */
+    public function verify($token, $action = 'login')
+    {
+        // Nếu disabled, tự động pass
+        if (!$this->enabled) {
             return [
                 'success' => true,
-                'score' => 1.0
+                'score' => 1.0,
+                'message' => 'reCAPTCHA disabled'
             ];
         }
 
-        // Validate input
+        // Nếu không có token (reCAPTCHA v2 Checkbox)
         if (empty($token)) {
             return [
                 'success' => false,
-                'score' => 0.0
+                'score' => 0,
+                'message' => 'reCAPTCHA response missing'
             ];
         }
 
-        try {
-            // Gửi request đến Google
-            $response = $this->sendVerifyRequest($token);
+        // Gửi request đến Google để verify
+        $response = $this->sendVerifyRequest($token);
 
-            if (!$response) {
-                error_log("reCAPTCHA: Request failed");
+        // Log kết quả
+        $this->log($action, $token, $response);
+
+        return $response;
+    }
+
+    /**
+     * Gửi request verify đến Google reCAPTCHA API
+     */
+    private function sendVerifyRequest($token)
+    {
+        try {
+            // Chuẩn bị dữ liệu
+            $data = [
+                'secret' => $this->secretKey,
+                'response' => $token
+            ];
+
+            // Gửi POST request
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => 'Content-Type: application/x-www-form-urlencoded',
+                    'content' => http_build_query($data),
+                    'timeout' => 10
+                ]
+            ]);
+
+            $response = @file_get_contents($this->verifyUrl, false, $context);
+
+            if ($response === false) {
                 return [
                     'success' => false,
-                    'score' => 0.0
+                    'score' => 0,
+                    'message' => 'Network error'
                 ];
             }
 
-            // Parse response từ Google
             $result = json_decode($response, true);
 
-            if (!isset($result['success'])) {
-                error_log("reCAPTCHA: Invalid response - " . $response);
-                return [
-                    'success' => false,
-                    'score' => 0.0
-                ];
-            }
-
-            $success = $result['success'] === true;
-            $score = $success ? 1.0 : 0.0; // v2 chỉ có success/fail, không có score
-
-            // Log result
-            $this->logVerification($result, $success);
+            // Kiểm tra kết quả từ Google
+            $success = isset($result['success']) && $result['success'] === true;
 
             return [
                 'success' => $success,
-                'score' => $score
+                'score' => $result['score'] ?? 0,
+                'message' => $success ? 'Verified' : 'Verification failed',
+                'action' => $result['action'] ?? null,
+                'challenge_ts' => $result['challenge_ts'] ?? null,
+                'hostname' => $result['hostname'] ?? null,
+                'error_codes' => $result['error-codes'] ?? []
             ];
         } catch (Exception $e) {
-            error_log("reCAPTCHA Error: " . $e->getMessage());
             return [
                 'success' => false,
-                'score' => 0.0
+                'score' => 0,
+                'message' => 'Exception: ' . $e->getMessage()
             ];
         }
     }
 
     /**
-     * Gửi POST request đến Google reCAPTCHA API
+     * Log request để debug
      */
-    private function sendVerifyRequest($token)
+    private function log($action, $token, $response)
     {
-        $data = http_build_query([
-            'secret' => $this->config['secret_key'],
-            'response' => $token,
-            'remoteip' => $this->getClientIp()
-        ]);
+        $logFile = __DIR__ . '/../logs/recaptcha.log';
 
-        $options = [
-            'http' => [
-                'method' => 'POST',
-                'header' => 'Content-Type: application/x-www-form-urlencoded',
-                'content' => $data,
-                'timeout' => $this->config['timeout']
-            ]
-        ];
+        // Tạo folder logs nếu chưa có
+        if (!is_dir(dirname($logFile))) {
+            @mkdir(dirname($logFile), 0777, true);
+        }
 
-        $context = stream_context_create($options);
-        $response = @file_get_contents(
-            $this->config['verify_url'],
-            false,
-            $context
-        );
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] " .
+            "Action: $action | " .
+            "Success: " . ($response['success'] ? 'YES' : 'NO') . " | " .
+            "Score: " . $response['score'] . " | " .
+            "Message: " . $response['message'] . " | " .
+            "IP: " . $this->getClientIp() . "\n";
 
-        return $response;
+        @file_put_contents($logFile, $logMessage, FILE_APPEND);
     }
 
     /**
@@ -117,88 +163,20 @@ class ReCaptchaService
      */
     private function getClientIp()
     {
-        $ipKeys = [
-            'HTTP_CLIENT_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_FORWARDED',
-            'HTTP_FORWARDED_FOR',
-            'HTTP_FORWARDED',
-            'REMOTE_ADDR'
-        ];
-
-        foreach ($ipKeys as $key) {
-            if (array_key_exists($key, $_SERVER)) {
-                $ips = explode(',', $_SERVER[$key]);
-                $ip = trim($ips[0]);
-
-                if (filter_var(
-                    $ip,
-                    FILTER_VALIDATE_IP,
-                    FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-                )) {
-                    return $ip;
-                }
-            }
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            return $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+        } else {
+            return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         }
-
-        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
     /**
-     * Log kết quả xác thực
-     */
-    private function logVerification($result, $success)
-    {
-        $logData = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'success' => $success,
-            'error_codes' => $result['error-codes'] ?? [],
-            'challenge_ts' => $result['challenge_ts'] ?? null,
-            'hostname' => $result['hostname'] ?? null,
-            'ip' => $this->getClientIp()
-        ];
-
-        error_log("reCAPTCHA v2: " . json_encode($logData));
-    }
-
-    /**
-     * Render Google reCAPTCHA script
-     */
-    public function renderScript()
-    {
-        if (!$this->config['enabled']) {
-            return '';
-        }
-
-        $siteKey = htmlspecialchars($this->config['site_key']);
-
-        return <<<HTML
-<!-- Google reCAPTCHA v2 Script -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
-HTML;
-    }
-
-    /**
-     * Render reCAPTCHA checkbox HTML
-     */
-    public function renderCheckbox()
-    {
-        if (!$this->config['enabled']) {
-            return '';
-        }
-
-        $siteKey = htmlspecialchars($this->config['site_key']);
-
-        return <<<HTML
-<div class="g-recaptcha" data-sitekey="{$siteKey}"></div>
-HTML;
-    }
-
-    /**
-     * Lấy Site Key
+     * Lấy Site Key (để truyền vào HTML)
      */
     public function getSiteKey()
     {
-        return $this->config['site_key'];
+        return $this->siteKey;
     }
 }

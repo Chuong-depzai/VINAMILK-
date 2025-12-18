@@ -111,6 +111,92 @@
         border: 1px solid #f5c6cb;
     }
 
+    /* Avatar Upload Section */
+    .avatar-upload-section {
+        text-align: center;
+        padding: 30px;
+        background: linear-gradient(135deg, #f5f8ff 0%, #e6f0ff 100%);
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+
+    .current-avatar-display,
+    .avatar-placeholder-display {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        margin: 0 auto;
+        border: 4px solid white;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .current-avatar-display {
+        object-fit: cover;
+    }
+
+    .avatar-placeholder-display {
+        background: white;
+        color: #0033a0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 48px;
+    }
+
+    .avatar-camera-icon {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        width: 40px;
+        height: 40px;
+        background: #0033a0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 3px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+    }
+
+    .avatar-camera-icon:hover {
+        background: #002780;
+        transform: scale(1.1);
+    }
+
+    .btn-upload-avatar,
+    .btn-delete-avatar {
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: none;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-upload-avatar {
+        background: #0033a0;
+        color: white;
+    }
+
+    .btn-upload-avatar:hover {
+        background: #002780;
+    }
+
+    .btn-delete-avatar {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-delete-avatar:hover {
+        background: #c82333;
+    }
+
     @media (max-width: 768px) {
         .profile-main {
             padding: 20px;
@@ -164,6 +250,74 @@
 
         <!-- Tab: Thông tin cá nhân -->
         <div id="tab-info" class="tab-content active">
+            <!-- AVATAR UPLOAD SECTION -->
+            <div class="avatar-upload-section">
+                <h3 class="section-title" style="border: none; margin-bottom: 20px;">📸 Ảnh đại diện</h3>
+
+                <!-- Current Avatar Display -->
+                <div style="position: relative; display: inline-block;">
+                    <?php if (!empty($user['avatar'])): ?>
+                        <img src="uploads/avatars/<?php echo htmlspecialchars($user['avatar']); ?>"
+                            class="current-avatar-display"
+                            alt="Avatar"
+                            id="avatarPreview">
+                    <?php else: ?>
+                        <div class="avatar-placeholder-display" id="avatarPreview">
+                            <?php echo strtoupper(substr($user['full_name'] ?? 'U', 0, 1)); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Camera Icon Overlay -->
+                    <label for="avatarInput" class="avatar-camera-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                    </label>
+                </div>
+
+                <!-- Upload Form -->
+                <form method="POST" action="index.php?controller=user&action=uploadAvatar"
+                    enctype="multipart/form-data"
+                    class="avatar-upload-form"
+                    id="avatarForm">
+                    <input type="file"
+                        name="avatar"
+                        id="avatarInput"
+                        accept="image/*"
+                        style="display: none;"
+                        onchange="previewAvatar(this)">
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
+                        <button type="button"
+                            class="btn-upload-avatar"
+                            onclick="document.getElementById('avatarInput').click()">
+                            📷 Chọn ảnh mới
+                        </button>
+
+                        <?php if (!empty($user['avatar'])): ?>
+                            <a href="index.php?controller=user&action=deleteAvatar"
+                                class="btn-delete-avatar"
+                                onclick="return confirm('Bạn có chắc muốn xóa ảnh đại diện?')">
+                                🗑️ Xóa ảnh
+                            </a>
+                        <?php endif; ?>
+                    </div>
+
+                    <button type="submit"
+                        id="btnUploadAvatar"
+                        class="btn-upload-avatar"
+                        style="display: none; margin-top: 10px;">
+                        💾 Lưu ảnh mới
+                    </button>
+                </form>
+
+                <p style="font-size: 12px; color: #666; margin-top: 15px;">
+                    📌 Chấp nhận: JPG, PNG, GIF (tối đa 5MB)
+                </p>
+            </div>
+
+            <!-- Profile Form -->
             <form method="POST" action="index.php?controller=user&action=updateProfile" class="auth-form">
                 <div class="form-section">
                     <h3 class="section-title">Thông tin cơ bản</h3>
@@ -293,5 +447,29 @@
         // Show selected tab
         document.getElementById('tab-' + tabName).classList.add('active');
         event.target.classList.add('active');
+    }
+
+    // Preview avatar before upload
+    function previewAvatar(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const preview = document.getElementById('avatarPreview');
+
+                // Replace with image tag
+                preview.outerHTML = `
+                    <img src="${e.target.result}" 
+                         class="current-avatar-display" 
+                         alt="Avatar Preview"
+                         id="avatarPreview">
+                `;
+
+                // Show upload button
+                document.getElementById('btnUploadAvatar').style.display = 'inline-block';
+            };
+
+            reader.readAsDataURL(input.files[0]);
+        }
     }
 </script>

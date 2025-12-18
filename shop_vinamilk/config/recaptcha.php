@@ -1,31 +1,19 @@
 <?php
 
-/**
- * reCAPTCHA Configuration
- * 
- * Lấy keys từ: https://www.google.com/recaptcha/admin
- * Chọn: Challenge (v2) > "I'm not a robot" Checkbox
- */
 
 return [
-    // ✅ Bật/Tắt reCAPTCHA (dev mode có thể tắt)
+
     'enabled' => true,
 
-    // 🔑 Keys từ Google reCAPTCHA Admin Console
-    'site_key' => '6LeLSywsAAAAALpDlW-zUAMD9mSXn3ys6rVfxteI
-',      // Dùng ở HTML/JavaScript
-    'secret_key' => 'YOUR_SECRET_KEY_HERE',  // Dùng ở Server (PHP)
+    // 🔑 KEYS TỪ GOOGLE RECAPTCHA ADMIN CONSOLE
+    // ⚠️ THAY BẰNG KEYS THỰC CỦA BẠN
+    'site_key' => getenv('RECAPTCHA_SITE_KEY') ?: '6LfWnC4sAAAAAC5mbPZ7A2YJwzgY49zkBQ4um0Zk',  // Test Key
+    'secret_key' => getenv('RECAPTCHA_SECRET_KEY') ?: '6LfWnC4sAAAAAJz-M2fZ22vSm2ElGP90zo-h7ldc', // Test Key
 
-    // URL xác thực (v2)
-    'verify_url' => '6LeLSywsAAAAAKnKaxiCEPzZBiryWPXd5W8GoGrO
-',
+    // ✅ URL VERIFY RECAPTCHA (v2)
+    'verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
 
-    // Ngưỡng điểm (v3 - không cần cho v2)
-    'min_score' => 0.5,
-
-    // Timeout request (giây)
-    'timeout' => 10,
-
-    // Logging
+    // ⚙️ CẤU HÌNH
+    'timeout' => 10, // Timeout request (giây)
     'log_path' => __DIR__ . '/../logs/recaptcha.log',
 ];

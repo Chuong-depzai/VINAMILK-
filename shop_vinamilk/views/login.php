@@ -11,13 +11,12 @@ $recaptchaService = new ReCaptchaService();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng nhập</title>
+    <!-- ✅ THÊM GOOGLE RECAPTCHA SCRIPT -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 
 <body>
     <br> <br> <br><br> <br>
-
-    <!-- ✅ Render reCAPTCHA Script -->
-    <?php echo $recaptchaService->renderScript(); ?>
 
     <div class="page-container">
         <div class="auth-container">
@@ -62,14 +61,6 @@ $recaptchaService = new ReCaptchaService();
                             class="form-input"
                             placeholder="Nhập mật khẩu"
                             required>
-
-                        <!-- ✅ Password Strength Indicator -->
-                        <div id="passwordStrength" style="display: none; margin-top: 8px;">
-                            <div style="height: 4px; background: #eee; border-radius: 2px; overflow: hidden; margin-bottom: 4px;">
-                                <div id="strengthBar" style="height: 100%; width: 0%; transition: all 0.3s;"></div>
-                            </div>
-                            <small id="strengthText" style="font-size: 12px;"></small>
-                        </div>
                     </div>
 
                     <div class="form-group-checkbox-wrapper" style="display: flex; justify-content: space-between; margin: 15px 0;">
@@ -80,10 +71,14 @@ $recaptchaService = new ReCaptchaService();
                         <a href="index.php?controller=auth&action=showForgotPassword" class="forgot-password-link">Quên mật khẩu?</a>
                     </div>
 
-                    <!-- ✅ reCAPTCHA v2 Checkbox -->
+                    <!-- ✅ reCAPTCHA v2 Checkbox (PHẢI CÓ DIV NÀY) -->
                     <div class="form-group" style="margin: 20px 0;">
-                        <?php echo $recaptchaService->renderCheckbox(); ?>
-                        <input type="hidden" name="recaptcha_token" id="recaptchaToken">
+                        <div class="g-recaptcha"
+                            data-sitekey="<?php echo htmlspecialchars($recaptchaService->getSiteKey()); ?>"
+                            data-callback="onRecaptchaSuccess"
+                            data-expired-callback="onRecaptchaExpired">
+                        </div>
+                        <input type="hidden" id="recaptchaToken" name="g-recaptcha-response" value="">
                     </div>
 
                     <!-- ✅ Google Privacy Notice -->
@@ -109,20 +104,31 @@ $recaptchaService = new ReCaptchaService();
 
     <!-- ✅ JavaScript xử lý form & reCAPTCHA -->
     <script>
+        // Callback khi reCAPTCHA thành công
+        function onRecaptchaSuccess(token) {
+            document.getElementById('recaptchaToken').value = token;
+            console.log('reCAPTCHA success:', token);
+        }
+
+        // Callback khi reCAPTCHA hết hạn
+        function onRecaptchaExpired() {
+            document.getElementById('recaptchaToken').value = '';
+            console.log('reCAPTCHA expired');
+        }
+
+        // Xử lý submit form
         const loginForm = document.getElementById('loginForm');
         const submitBtn = document.getElementById('submitBtn');
         const btnText = document.getElementById('btnText');
-        const passwordInput = document.getElementById('password');
 
-        // ✅ Xử lý submit form
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            // Kiểm tra reCAPTCHA đã được check chưa
-            const recaptchaResponse = document.querySelector('[name="g-recaptcha-response"]');
+            // ✅ Kiểm tra reCAPTCHA đã được check chưa
+            const recaptchaToken = document.getElementById('recaptchaToken').value;
 
-            if (!recaptchaResponse || !recaptchaResponse.value) {
-                alert('Vui lòng xác thực reCAPTCHA');
+            if (!recaptchaToken) {
+                alert('⚠️ Vui lòng xác thực reCAPTCHA');
                 return;
             }
 
@@ -130,104 +136,17 @@ $recaptchaService = new ReCaptchaService();
             submitBtn.disabled = true;
             btnText.textContent = '⏳ Đang xác thực...';
 
-            // Set token (v2 Checkbox tự động gán vào g-recaptcha-response)
-            document.getElementById('recaptchaToken').value = recaptchaResponse.value;
-
             // Submit form
             setTimeout(() => {
                 loginForm.submit();
             }, 500);
         });
-
-        // ✅ Password Strength Indicator
-        const strengthBar = document.getElementById('strengthBar');
-        const strengthText = document.getElementById('strengthText');
-        const passwordStrength = document.getElementById('passwordStrength');
-
-        passwordInput.addEventListener('input', () => {
-            const password = passwordInput.value;
-
-            if (!password) {
-                passwordStrength.style.display = 'none';
-                return;
-            }
-
-            const strength = calculatePasswordStrength(password);
-            passwordStrength.style.display = 'block';
-            strengthBar.style.width = strength.percent + '%';
-            strengthBar.style.background = strength.color;
-            strengthText.textContent = strength.text;
-            strengthText.style.color = strength.color;
-        });
-
-        // ✅ Tính toán độ mạnh mật khẩu
-        function calculatePasswordStrength(password) {
-            let score = 0;
-
-            if (password.length >= 6) score++;
-            if (password.length >= 8) score++;
-            if (password.length >= 12) score++;
-            if (/[a-z]/.test(password)) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/[0-9]/.test(password)) score++;
-            if (/[^A-Za-z0-9]/.test(password)) score++;
-
-            const levels = [{
-                    percent: 0,
-                    color: '#ccc',
-                    text: ''
-                },
-                {
-                    percent: 20,
-                    color: '#dc3545',
-                    text: 'Rất yếu'
-                },
-                {
-                    percent: 40,
-                    color: '#fd7e14',
-                    text: 'Yếu'
-                },
-                {
-                    percent: 60,
-                    color: '#ffc107',
-                    text: 'Trung bình'
-                },
-                {
-                    percent: 80,
-                    color: '#28a745',
-                    text: 'Mạnh'
-                },
-                {
-                    percent: 100,
-                    color: '#0033a0',
-                    text: 'Rất mạnh'
-                }
-            ];
-
-            return levels[Math.min(score, 5)];
-        }
     </script>
 
     <style>
         #submitBtn:disabled {
             opacity: 0.7;
             cursor: not-allowed;
-        }
-
-        #passwordStrength {
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
     </style>
 

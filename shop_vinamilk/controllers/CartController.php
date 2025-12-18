@@ -126,4 +126,51 @@ class CartController
         header('Location: index.php?controller=payment&action=checkout');
         exit;
     }
+    public function getCount()
+    {
+        header('Content-Type: application/json');
+
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['count' => 0]);
+            exit;
+        }
+
+        $count = $this->cartModel->getCount();
+        echo json_encode(['count' => $count]);
+        exit;
+    }
+
+    /**
+     * API: Cập nhật số lượng và trả về tổng tiền mới (AJAX)
+     */
+    public function updateAjax()
+    {
+        header('Content-Type: application/json');
+
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng đăng nhập']);
+            exit;
+        }
+
+        if (isset($_POST['product_id']) && isset($_POST['quantity'])) {
+            $productId = intval($_POST['product_id']);
+            $quantity = intval($_POST['quantity']);
+
+            $this->cartModel->updateQuantity($productId, $quantity);
+
+            $cartItems = $this->cartModel->getItems();
+            $total = $this->cartModel->getTotal();
+            $count = $this->cartModel->getCount();
+
+            echo json_encode([
+                'success' => true,
+                'count' => $count,
+                'total' => number_format($total, 0, ',', '.'),
+                'totalRaw' => $total
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ']);
+        }
+        exit;
+    }
 }
