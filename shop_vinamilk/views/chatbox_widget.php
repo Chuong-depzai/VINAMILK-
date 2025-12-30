@@ -281,11 +281,15 @@
 
 <body>
 
+
     <!-- Chat Button -->
     <button id="chatButton">💬</button>
 
     <!-- Chat Window -->
     <div id="chatWindow">
+
+
+
         <!-- Header -->
         <div class="chat-header">
             <div class="chat-header-info">

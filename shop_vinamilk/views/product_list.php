@@ -1,16 +1,44 @@
 <?php
+// Xử lý bộ lọc
+$filteredProducts = $products;
+
+// Lọc theo loại sản phẩm (Dòng sản phẩm)
+if (!empty($_GET['type']) && is_array($_GET['type'])) {
+    $filteredProducts = array_filter($filteredProducts, function ($p) {
+        return in_array($p['type'], $_GET['type']);
+    });
+}
+
+// Lọc theo giá
+if (!empty($_GET['price'])) {
+    $filteredProducts = array_filter($filteredProducts, function ($p) {
+        switch ($_GET['price']) {
+            case 'under-50k':
+                return $p['price'] < 50000;
+            case '50k-100k':
+                return $p['price'] >= 50000 && $p['price'] < 100000;
+            case '100k-300k':
+                return $p['price'] >= 100000 && $p['price'] < 300000;
+            case 'over-300k':
+                return $p['price'] >= 300000;
+            default:
+                return true;
+        }
+    });
+}
+
 $productsPerPage = 9;
 $currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$totalProducts = count($products);
+$totalProducts = count($filteredProducts);
 $totalPages = ceil($totalProducts / $productsPerPage);
 $offset = ($currentPage - 1) * $productsPerPage;
-$productsOnPage = array_slice($products, $offset, $productsPerPage);
+$productsOnPage = array_slice($filteredProducts, $offset, $productsPerPage);
 
 function buildPaginationUrl($page)
 {
     $params = $_GET;
     $params['page'] = $page;
-    return '?' . http_build_query($params);
+    return 'index.php?controller=product&action=productList&' . http_build_query($params);
 }
 
 $productTypes = [];
@@ -19,6 +47,14 @@ foreach ($products as $p) {
         $productTypes[] = $p['type'];
     }
 }
+sort($productTypes);
+
+$priceRanges = [
+    'under-50k' => 'Dưới 50.000đ',
+    '50k-100k' => '50.000đ - 100.000đ',
+    '100k-300k' => '100.000đ - 300.000đ',
+    'over-300k' => 'Trên 300.000đ'
+];
 ?>
 
 <div class="products-page">
@@ -43,27 +79,21 @@ foreach ($products as $p) {
     <div class="products-layout">
         <aside class="products-sidebar">
             <div class="filter-group">
-                <div class="filter-header">
-                    <span>Danh mục</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </div>
-                <div class="filter-line"></div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header">
+                <div class="filter-header" onclick="toggleFilter(this)">
                     <span>Dòng sản phẩm</span>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                         <polyline points="6 9 12 15 18 9" />
                     </svg>
                 </div>
                 <div class="filter-line"></div>
-                <div class="filter-options">
+                <div class="filter-options show">
                     <?php foreach ($productTypes as $type): ?>
                         <label class="filter-option">
-                            <input type="checkbox" name="type[]" value="<?php echo htmlspecialchars($type); ?>">
+                            <input type="checkbox"
+                                class="type-filter"
+                                value="<?php echo htmlspecialchars($type); ?>"
+                                <?php echo (isset($_GET['type']) && in_array($type, $_GET['type'])) ? 'checked' : ''; ?>
+                                onchange="applyFilter()">
                             <span><?php echo htmlspecialchars($type); ?></span>
                         </label>
                     <?php endforeach; ?>
@@ -71,53 +101,26 @@ foreach ($products as $p) {
             </div>
 
             <div class="filter-group">
-                <div class="filter-header">
-                    <span>Thương hiệu</span>
+                <div class="filter-header" onclick="toggleFilter(this)">
+                    <span>Khoảng giá</span>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                         <polyline points="6 9 12 15 18 9" />
                     </svg>
                 </div>
                 <div class="filter-line"></div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header">
-                    <span>Hương vị</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                <div class="filter-options">
+                    <?php foreach ($priceRanges as $key => $label): ?>
+                        <label class="filter-option">
+                            <input type="radio"
+                                class="price-filter"
+                                name="price"
+                                value="<?php echo htmlspecialchars($key); ?>"
+                                <?php echo (isset($_GET['price']) && $_GET['price'] === $key) ? 'checked' : ''; ?>
+                                onchange="applyFilter()">
+                            <span><?php echo htmlspecialchars($label); ?></span>
+                        </label>
+                    <?php endforeach; ?>
                 </div>
-                <div class="filter-line"></div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header">
-                    <span>Thể tích / Khối lượng</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </div>
-                <div class="filter-line"></div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header">
-                    <span>Nhu cầu dinh dưỡng</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </div>
-                <div class="filter-line"></div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header">
-                    <span>Mức đường</span>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </div>
-                <div class="filter-line"></div>
             </div>
         </aside>
 
@@ -148,9 +151,9 @@ foreach ($products as $p) {
                 </div>
             </div>
 
-            <?php if (empty($products)): ?>
+            <?php if (empty($productsOnPage)): ?>
                 <div class="empty-state">
-                    <p>Chưa có sản phẩm nào.</p>
+                    <p>Chưa có sản phẩm nào phù hợp.</p>
                 </div>
             <?php else: ?>
                 <div class="products-grid">
@@ -239,20 +242,42 @@ foreach ($products as $p) {
 </div>
 
 <script>
-    function addToCart(productId) {
-        fetch('index.php?controller=cart&action=add', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'product_id=' + productId + '&quantity=1'
-        }).then(r => r.json()).then(data => {
-            if (data.success) {
-                alert('Đã thêm vào giỏ hàng!');
-                location.reload();
-            }
-        }).catch(() => {
-            window.location.href = 'index.php?controller=cart&action=add&product_id=' + productId;
+    function toggleFilter(header) {
+        const options = header.parentElement.querySelector('.filter-options');
+        if (options) {
+            options.classList.toggle('show');
+        }
+    }
+
+    function applyFilter() {
+        const types = [];
+        document.querySelectorAll('.type-filter:checked').forEach(cb => {
+            types.push('type[]=' + encodeURIComponent(cb.value));
         });
+
+        const price = document.querySelector('.price-filter:checked');
+        let url = 'index.php?controller=product&action=productList';
+
+        if (types.length > 0) {
+            url += '&' + types.join('&');
+        }
+
+        if (price) {
+            url += '&price=' + encodeURIComponent(price.value);
+        }
+
+        window.location.href = url;
+    }
+
+    function addToCart(productId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'index.php?controller=cart&action=add';
+        form.innerHTML = `
+            <input type="hidden" name="product_id" value="${productId}">
+            <input type="hidden" name="quantity" value="1">
+        `;
+        document.body.appendChild(form);
+        form.submit();
     }
 </script>

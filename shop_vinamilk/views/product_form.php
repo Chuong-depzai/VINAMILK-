@@ -1,3 +1,4 @@
+<br><br><br><br><br><br><br>
 <div class="page-container">
     <h1 class="page-title"><?php echo isset($product) ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'; ?></h1>
 
